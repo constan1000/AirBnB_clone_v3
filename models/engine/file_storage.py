@@ -70,17 +70,19 @@ class FileStorage:
         self.reload()
 
     def get(self, cls, id):
-        """get one object based on class name and id
-        Arguments:
-            cls: string representation of object class name
-            id: string representation of object's id
-        Returns:
-            Object requested. None if not found.
         """
-        return self.all(cls).get(cls + '.' + id)
+        Returns the object
+        """
+        obj = self.__session.query(cls).get(id)
+        if obj is None:
+            return None
+        return obj
 
     def count(self, cls=None):
-        """get number of objects matching given class name
-        If cls is not given, return number of all objects
         """
-        return len(self.all(cls))
+        count the number of objects in storage
+        """
+        objs = self.all(cls)
+        return (len(objs))
+
+        return count

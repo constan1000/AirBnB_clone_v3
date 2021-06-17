@@ -1,36 +1,32 @@
 #!/usr/bin/python3
-"""
-module creates a route /status on any object app_views
-return: JSON: "status: OK"
-"""
+"""Index"""
+from models import storage
 from api.v1.views import app_views
 from flask import jsonify
-from models import storage
 from models.amenity import Amenity
-from models.base_model import BaseModel, Base
 from models.city import City
 from models.place import Place
 from models.review import Review
 from models.state import State
 from models.user import User
-classes = {"amenities": Amenity, "cities": City, "places": Place,
-           "reviews": Review, "states": State, "users": User}
 
 
-@app_views.route("/status", strict_slashes=False)
+@app_views.route('/status', strict_slashes=False)
 def status():
-    """
-    Returns OK if JSON works
-    """
-    j_status = {"status": "OK"}
-    return jsonify(j_status)
+    """ Status of API """
+    ok_status = {"status": "OK"}
+    return jsonify(ok_status)
 
 
-@app_views.route("/stats", strict_slashes=False)
-def count_all():
+@app_views.route('/stats')
+def stats():
     """
-    Returns OK if JSON works
+        return dict count of data
     """
-    return jsonify({
-        name: storage.count(obj) for name, obj in classes.items()
-    })
+    my_dict = {"amenities": storage.count(Amenity),
+               "cities": storage.count(City),
+               "places": storage.count(Place),
+               "reviews": storage.count(Review),
+               "states": storage.count(State),
+               "users": storage.count(User)}
+    return jsonify(my_dict)

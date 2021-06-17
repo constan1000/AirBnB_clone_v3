@@ -1,73 +1,86 @@
 #!/usr/bin/python3
-"""
-module that defines API interactions for Places __objects
-"""
+""" Places amenities routes handler """
 from api.v1.views import app_views
-from models.amenity import Amenity
+from flask import jsonify, abort, request
 from models import storage
-from flask import jsonify, abort
+from models import place
+from models import amenity
 
 
-@app_views.route('/places/<place_id>/amenities', methods=['GET'])
-def get_place_amens(place_id):
+def do_check_id(cls, amenity_id):
     """
-    defines the places/amenities route
-    Returns: list of all Amenity objects associated with a Place obj
+    If the cls is not linked to any Cls object, raise a 404 error
     """
-    place = storage.get('Place', place_id)
-
-    if not place:
+    try:
+        get_amenity = storage.get(cls, amenity_id)
+        get_amenity.to_dict()
+    except Exception:
         abort(404)
+    return get_amenity
 
-    return jsonify([amenity.to_dict() for amenity in place.amenities])
 
-
-@app_views.route('/places/<place_id>/amenities/<amenity_id>',
-                 methods=['DELETE'])
-def del_place_amen(place_id, amenity_id):
+def do_get_amenities(place_id):
     """
-    defines Delete for Amenity objects
-    Returns: if successful 200 and an empty dictionary
-             404 if amenity_id is not linked to any Place obj
-             404 if Amenity is not linked to the Place prior to request
-             404 if amenity_id is not linked to any amenity obj
+       Retrieves the list of all Amenity objects
+       if amenity_id is not none get a Amenity object
     """
-    place = storage.get('Place', place_id)
-    if not place:
+    do_check_id(place.Place, place_id)
+    my_place = storage.get(place.Place, place_id)
+    try:
+        all_amenities = my_place.amenities
+    except Exception:
         abort(404)
+    amenities = []
+    for c in all_amenities:
+        amenities.append(c.to_dict())
+    return jsonify(amenities)
 
-    amenity = storage.get('Amenity', amenity_id)
-    if not amenity:
-        abort(404)
 
-    if amenity not in place.amenities:
-        abort(404)
+def do_delete_amenity(place_id, amenity_id):
+    """
+        Deletes the link between Amenity object and a Place
+        Return: an empty dictionary with the status code 200
+    """
+    my_place = do_check_id(place.Place, place_id)
+    do_check_id(amenity.Amenity, amenity_id)
+    for i in range(len(my_place.amenities)):
+        if (my_place.amenities[i].id == amenity_id):
+            del(my_place.amenities[i])
+            storage.save()
+            response = {}
+            return jsonify(response), 200
+    abort(404)
 
-    storage.delete(amenity)
+
+def do_create_amenity(place_id, amenity_id):
+    """
+        Links a amenity object
+        Return: linked amenity object
+    """
+    my_place = do_check_id(place.Place, place_id)
+    get_amenity = do_check_id(amenity.Amenity, amenity_id)
+    for i in range(len(my_place.amenities)):
+        if (my_place.amenities[i].id == amenity_id):
+            return jsonify(get_amenity.to_dict()), 200
+    my_place.amenities.append(get_amenity)
     storage.save()
-    return jsonify({}), 200
+    return jsonify(get_amenity.to_dict()), 201
 
 
-@app_views.route('/places/<place_id>/amenities/<amenity_id>', methods=['POST'])
-def create_place_amenity(place_id, amenity_id):
+@app_views.route('/places/<place_id>/amenities',
+                 methods=['GET'],
+                 defaults={'amenity_id': None},
+                 strict_slashes=False)
+@app_views.route('/places/<place_id>/amenities/<amenity_id>',
+                 methods=['DELETE', 'POST'],
+                 strict_slashes=False)
+def places_amenities(place_id, amenity_id):
     """
-    defines POST for Amenity objects
-    Returns: if successful 200 and a new Amenity obj
-             404 if amenity_id is not linked to any Place obj
-             404 if Amenity is not linked to the Place prior to request
-             404 if amenity_id is not linked to any amenity obj
+        Handle amenities requests with needed functions
     """
-    place = storage.get('Place', place_id)
-    if not place:
-        abort(404)
-
-    amenity = storage.get('Amenity', amenity_id)
-    if not amenity:
-        abort(404)
-
-    if amenity not in place.amenities:
-        place.amenities.append(amenity)
-        place.save()
-        return jsonify(amenity.to_dict()), 201
-    else:
-        return jsonify(amenity.to_dict()), 200
+    if (request.method == "GET"):
+        return do_get_amenities(place_id)
+    elif (request.method == "DELETE"):
+        return do_delete_amenity(place_id, amenity_id)
+    elif (request.method == "POST"):
+        return do_create_amenity(place_id, amenity_id)
